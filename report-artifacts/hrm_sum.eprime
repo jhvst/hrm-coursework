@@ -1,0 +1,169 @@
+language ESSENCE' 1.0
+
+given MAX_OPS: int(1..)
+given num_registers : int(0..)
+given input: matrix indexed by [int(1..input_length)] of int(0..100)
+given output: matrix indexed by [int(1..output_length)] of int(0..100)
+
+letting input_iter be domain int(1..input_length)
+letting output_iter be domain int(1..output_length)
+letting steps_iter be domain int(1..MAX_OPS)
+letting reg_iter be domain int(1..num_registers)
+
+letting INBOX be 1
+letting OUTBOX be 2
+letting COPYFROM be 3
+letting COPYTO be 4
+letting ADD be 5
+letting SUB be 6
+letting BUMPP be 7
+letting BUMPM be 8
+
+find result: matrix indexed by [int(1..output_length)] of int(toSet(output))
+find steps: matrix indexed by [int(1..MAX_OPS)] of int(
+    INBOX, OUTBOX, COPYFROM, COPYTO, ADD, SUB, BUMPP, BUMPM
+)
+find carrying: matrix indexed by [int(1..MAX_OPS)] of int(-1..100)
+find registers: matrix indexed by [int(1..num_registers), int(1..MAX_OPS)] of int(-1..100)
+
+such that
+
+steps[1] = INBOX,
+
+forAll r : reg_iter .
+    registers[r,1] = -1
+,
+
+forAll o : output_iter .
+exists s : steps_iter .
+    carrying[s] = output[o] /\ steps[ s] = OUTBOX
+,
+
+$ Loop for register values
+forAll s : steps_iter .
+    ((carrying[s] < output[1+(sum p : int(1..s) . steps[p] = OUTBOX)]
+    \/ carrying[s] > output[1+(sum p : int(1..s) . steps[p] = OUTBOX)])
+    /\ ((sum p : int(1..s) . steps[p] = COPYTO) = 0) ->
+        (steps[s+1] = INBOX
+        \/ steps[s+1] = COPYTO))
+    /\
+    ((carrying[s] < output[1+(sum p : int(1..s) . steps[p] = OUTBOX)])
+    /\ (sum p : int(1..s) . steps[p] = COPYTO) > 0 ->
+        (steps[s+1] = ADD
+        \/ steps[s+1] = BUMPP
+        \/ steps[s+1] = INBOX
+        \/ steps[s+1] = COPYTO
+        \/ steps[s+1] = COPYFROM))
+    /\
+    ((carrying[s] > output[1+(sum p : int(1..s) . steps[p] = OUTBOX)])
+    /\ (sum p : int(1..s) . steps[p] = COPYTO) > 0 ->
+        (steps[s+1] = SUB
+        \/ steps[s+1] = BUMPM
+        \/ steps[s+1] = INBOX
+        \/ steps[s+1] = COPYTO
+        \/ steps[s+1] = COPYFROM))
+    /\
+    ((carrying[s] = output[1+(sum p : int(1..s) . steps[p] = OUTBOX)]) ->
+        steps[s+1] = OUTBOX)
+,
+
+num_registers = 0 ->
+    forAll s : steps_iter . steps[s] = INBOX \/ steps[s] = OUTBOX
+,
+
+$ first step can never be copy to, thus we skip it
+num_registers > 0 ->
+    forAll s : int(2..MAX_OPS) .
+        (steps[s] = INBOX \/ steps[s] = OUTBOX ->
+            $ rows after 1..2 are register values
+            forAll r : int(1..num_registers) .
+                registers[r,s] = registers[r,s-1])
+        /\
+        (steps[s] = COPYTO ->
+            $ the current register value
+            registers[(sum p : int(2..s) . steps[p] = COPYTO), s] =
+            $ is the same as last value in hand
+            carrying[s-1])
+        /\
+        (steps[s] = COPYFROM ->
+            $ the current register value
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s] =
+            $ is the same as before
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1])
+        /\
+        (steps[s] = BUMPM ->
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s] =
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1] - 1)
+        /\
+        (steps[s] = BUMPP ->
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s] =
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1] + 1)
+        /\
+        (steps[s] = SUB ->
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s] =
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1])
+        /\
+        (steps[s] = ADD ->
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s] =
+            registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1])
+,
+
+forAll s : steps_iter .
+    $ Most steps require:
+    $ a) COPYTO exist before them
+    $ b) some register value to be non-nil
+    (steps[s] = INBOX
+        \/ steps[s] = COPYFROM
+        \/ steps[s] = COPYTO
+        \/ steps[s] = ADD
+        \/ steps[s] = SUB
+        \/ steps[s] = BUMPP
+        \/ steps[s] = BUMPM ->
+            s != MAX_OPS)
+    /\
+    (steps[s] = COPYFROM
+        \/ steps[s] = ADD
+        \/ steps[s] = SUB
+        \/ steps[s] = BUMPP
+        \/ steps[s] = BUMPM ->
+            num_registers > 0
+            /\ exists ii : steps_iter . steps[ii] = COPYTO /\ ii < s)
+    /\
+    (steps[s] = OUTBOX <->
+        (sum p : int(1..s) . steps[p] = INBOX) > 0
+        /\ carrying[s] = carrying[s-1]
+        /\ result[(sum p : int(1..s) . steps[p] = OUTBOX)] = carrying[s-1]
+        /\ steps[s-1] != OUTBOX)
+    /\
+    ((steps[s] = COPYTO \/ steps[s] = COPYFROM) /\ s > num_registers+1 ->
+        (sum p : int(s-num_registers..s) . steps[p] = s) < num_registers)
+    /\
+    (steps[s] = INBOX ->
+        carrying[s] = input[(sum p : int(1..s) . steps[p] = INBOX)])
+    /\
+    (steps[s] = COPYTO ->
+        carrying[s] = carrying[s-1])
+    /\
+    (steps[s] = COPYFROM ->
+        carrying[s] = registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1])
+    /\
+    (steps[s] = ADD ->
+        (carrying[s] = registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1]
+        + carrying[s-1]))
+    /\
+    (steps[s] = SUB ->
+        (carrying[s] = registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1]
+        - carrying[s-1]))
+    /\
+    (steps[s] = BUMPP ->
+        carrying[s] = registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1]
+        + 1)
+    /\
+    (steps[s] = BUMPM ->
+        carrying[s] = registers[(sum p : int(2..s) . steps[p] = COPYTO),s-1]
+        - 1)
+,
+
+gcc(steps, [OUTBOX], [output_length]),
+atmost(steps, [input_length], [INBOX]),
+atleast(steps, [1], [INBOX])

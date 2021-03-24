@@ -1,0 +1,8 @@
+language ESSENCE' 1.0
+$ Minion SolverNodes: 1
+$ Minion SolverTotalTime: 0.000321
+$ Minion SolverTimeOut: 0
+$ Savile Row TotalTime: 0.304
+letting carrying be [0, 20, 20, 8, 8, 0, 0, 6, 6, 4, 4]
+letting registers be ([] : `matrix indexed by [int(),int(1..11)] of int(-1..20)`)
+letting steps be [1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2]

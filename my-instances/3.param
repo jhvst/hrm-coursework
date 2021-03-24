@@ -1,0 +1,6 @@
+$ HRM instance with in/out lengths = 10/10, seed = 12345
+language ESSENCE' 1.0
+letting input=[12,1,2,9,16,5,16,3,2,10]
+letting output=[18,3,11,7,13,5,8,4,13,16]
+letting MAX_OPS=78
+letting num_registers=1

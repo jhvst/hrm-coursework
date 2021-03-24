@@ -1,0 +1,9 @@
+language ESSENCE' 1.0
+$ Minion SolverNodes: 17
+$ Minion SolverTotalTime: 0.013522
+$ Minion SolverTimeOut: 0
+$ Savile Row TotalTime: 0.519
+letting carrying be [3, 2, 1, 1, 1, 2, 2, 3, 3]
+letting registers be [[-1, -1, -1, -1, -1, -1, -1, -1, -1], 
+[-1, -1, -1, -1, 1, 1, 1, 1, 1]]
+letting steps be [1, 1, 1, 2, 4, 5, 2, 5, 2]
